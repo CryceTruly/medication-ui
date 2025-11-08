@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { useToast } from "@/components/toast";
 import type { ColumnId, Medication } from "@/types/medication";
-import { initialMedications } from "@/data/medications";
 import { Icon } from "@/components/ui/icon";
 import { SelectionCheckbox } from "@/components/medication/selection-checkbox";
 import {
@@ -15,9 +14,12 @@ import {
 import { ColumnConfigurator } from "@/components/medication/column-configurator";
 
 type EditableField = "name" | "dosage" | "frequency" | "duration" | "instructions";
+const DEFAULT_API_ENDPOINT =
+  process.env.NEXT_PUBLIC_MEDICATIONS_ENDPOINT ?? "/api/medications";
+const PAGE_SIZE = 20;
 
 export function MedicationTable() {
-  const [medications, setMedications] = useState<Medication[]>(initialMedications);
+  const [medications, setMedications] = useState<Medication[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
@@ -27,14 +29,60 @@ export function MedicationTable() {
   const [visibleOptionalColumns, setVisibleOptionalColumns] = useState<ColumnId[]>(
     DEFAULT_VISIBLE_OPTIONAL_COLUMNS,
   );
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [saveForTeam, setSaveForTeam] = useState(true);
   const { showToast } = useToast();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const pageNumbers = Array.from({ length: totalPages }, (_, idx) => idx + 1);
+  const startEntry = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const endEntry = totalCount === 0 ? 0 : Math.min(startEntry + medications.length - 1, totalCount);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 2000);
-    return () => clearTimeout(timer);
-  }, []);
+    const controller = new AbortController();
+    async function load() {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `${DEFAULT_API_ENDPOINT}?page=${page}&pageSize=${PAGE_SIZE}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch medications");
+        }
+        const result: {
+          data: Medication[];
+          total: number;
+          page: number;
+          pageSize: number;
+          totalPages: number;
+        } = await response.json();
+        const { data, total } = result;
+        setMedications(data);
+        setTotalCount(total ?? data.length);
+        setSelectedIds([]);
+        setPendingEdits({});
+        setEditingCells({});
+        setExpandedIds([]);
+        setIsEditing(false);
+      } catch (error) {
+        if ((error as Error).name === "AbortError") return;
+        console.error(error);
+        setMedications([]);
+        setTotalCount(0);
+        setSelectedIds([]);
+        setPendingEdits({});
+        setEditingCells({});
+        setExpandedIds([]);
+        setIsEditing(false);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    load();
+    return () => controller.abort();
+  }, [page, setTotalCount]);
 
   const toggleRowSelection = (id: number) => {
     setSelectedIds((prev) => {
@@ -287,6 +335,11 @@ export function MedicationTable() {
     setVisibleOptionalColumns(DEFAULT_VISIBLE_OPTIONAL_COLUMNS);
   };
 
+  const handlePageChange = (nextPage: number) => {
+    if (nextPage < 1 || nextPage > totalPages || nextPage === page) return;
+    setPage(nextPage);
+  };
+
   const toggleExpand = (id: number) => {
     setExpandedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
@@ -324,7 +377,7 @@ export function MedicationTable() {
         <div className="ml-auto h-4 w-24 rounded bg-slate-100" />
         <div className="ml-auto mt-2 h-3 w-20 rounded bg-slate-100" />
       </td>
-      {visibleOptionalColumns.map((column) => (
+      {activeOptionalColumns.map((column) => (
         <td key={`skeleton-${column}`} className="px-4 py-4">
           <div className="h-3 w-full rounded bg-slate-100" />
         </td>
@@ -442,7 +495,7 @@ export function MedicationTable() {
                 <th className="px-4 py-3">Frequency</th>
                 <th className="px-4 py-3">Additional instructions</th>
                 <th className="px-4 py-3 text-right pr-10">Date</th>
-                {visibleOptionalColumns.map((column) => (
+                {activeOptionalColumns.map((column) => (
                   <th key={`header-${column}`} className="px-4 py-3 text-left">
                     {optionalColumnConfig[column].label}
                   </th>
@@ -518,7 +571,7 @@ export function MedicationTable() {
                             <p className="text-sm text-slate-500">{med.doctor}</p>
                           </div>
                         </td>
-                        {visibleOptionalColumns.map((column) => (
+                        {activeOptionalColumns.map((column) => (
                           <td key={`${med.id}-${column}`} className="px-4 py-3 align-top">
                             {optionalColumnConfig[column].renderCell(med)}
                           </td>
@@ -532,7 +585,7 @@ export function MedicationTable() {
                       baseRow,
                       <tr key={`${med.id}-details`} className="border-t border-slate-100 bg-[#F7F7FB]">
                         <td className="pl-6" />
-                        <td colSpan={4 + visibleOptionalColumns.length} className="px-6 py-5">
+                        <td colSpan={4 + activeOptionalColumns.length} className="px-6 py-5">
                           <div className="grid gap-8 text-sm text-slate-700 md:grid-cols-3">
                             <div className="space-y-4">
                               <div>
@@ -592,14 +645,37 @@ export function MedicationTable() {
             </tbody>
           </table>
         </div>
-        <footer className="flex items-center justify-between border-t border-slate-200 px-6 py-4 text-sm text-slate-600">
-          <p>Showing 1-20 of 36</p>
-          <div className="flex items-center gap-2">
-            <button className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500">
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-6 py-4 text-sm text-slate-600">
+          <p>
+            Showing {startEntry}-{endEntry} of {totalCount}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 disabled:opacity-40"
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
+            >
               <span className="sr-only">Previous page</span>
               <Icon name="chevron-left" />
             </button>
-            <button className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500">
+            {pageNumbers.map((num) => (
+              <button
+                key={num}
+                onClick={() => handlePageChange(num)}
+                className={`flex h-8 min-w-[32px] items-center justify-center rounded-full border px-3 text-sm font-medium ${
+                  num === page
+                    ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {num}
+              </button>
+            ))}
+            <button
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 disabled:opacity-40"
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page === totalPages}
+            >
               <span className="sr-only">Next page</span>
               <Icon name="chevron-right" />
             </button>

@@ -85,15 +85,33 @@ export async function GET(request: Request) {
   const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
   const pageSize =
     Number.isNaN(pageSizeParam) || pageSizeParam < 1 ? PAGE_SIZE_DEFAULT : pageSizeParam;
+  const searchQuery = (searchParams.get("search") ?? "").trim().toLowerCase();
+
+  const filtered = searchQuery
+    ? medications.filter((med) =>
+        [
+          med.name,
+          med.dosage,
+          med.frequency,
+          med.duration,
+          med.instructions,
+          med.doctor,
+          med.patient?.fullName ?? "",
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(searchQuery),
+      )
+    : medications;
 
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
-  const data = medications.slice(start, end);
-  const totalPages = Math.max(1, Math.ceil(TOTAL_ITEMS / pageSize));
+  const data = filtered.slice(start, end);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
   return NextResponse.json({
     data,
-    total: TOTAL_ITEMS,
+    total: filtered.length,
     page,
     pageSize,
     totalPages,

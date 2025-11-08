@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
+import { useToast } from "@/components/toast";
 
 type Medication = {
   id: number;
@@ -456,8 +457,7 @@ export function MedicationTable() {
     const Wrapper = multiline ? "div" : "p";
 
     return (
-      <Wrapper className={`flex items-center gap-1 ${textClass}`}>
-        <span className="flex-1 whitespace-pre-line">{currentValue}</span>
+      <Wrapper className={`flex items-start gap-2 ${textClass}`}>
         <button
           type="button"
           onClick={() => startCellEdit(id, field)}
@@ -466,6 +466,7 @@ export function MedicationTable() {
         >
           <Icon name="pencil-blue" className="h-3.5 w-3.5" />
         </button>
+        <span className="flex-1 whitespace-pre-line">{currentValue}</span>
       </Wrapper>
     );
   };
@@ -475,6 +476,8 @@ export function MedicationTable() {
     setPendingEdits({});
     setEditingCells({});
   };
+
+  const { showToast } = useToast();
 
   const handleSaveChanges = () => {
     if (Object.keys(pendingEdits).length === 0) {
@@ -490,7 +493,7 @@ export function MedicationTable() {
     setPendingEdits({});
     setEditingCells({});
     setIsEditing(false);
-    alert("Changes saved");
+    showToast("Changes saved");
   };
 
   const handleStartEditing = () => {
@@ -706,7 +709,7 @@ export function MedicationTable() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            className="rounded-full border border-indigo-100 bg-white p-1 text-indigo-600 transition hover:bg-indigo-50"
+                            className="p-1 text-indigo-600 transition hover:text-indigo-800"
                             onClick={() => toggleExpand(med.id)}
                             aria-label={
                               isExpanded
@@ -746,17 +749,9 @@ export function MedicationTable() {
                         })}
                       </td>
                       <td className="px-4 py-3 align-top">
-                        <div className="flex items-start justify-end gap-3">
-                          <div className="text-right">
-                            <p className="font-medium text-slate-800">{med.date}</p>
-                            <p className="text-sm text-slate-500">{med.doctor}</p>
-                          </div>
-                          <button
-                            className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                            aria-label={`More options for ${med.name}`}
-                          >
-                            <Icon name="ellipsis" />
-                          </button>
+                        <div className="text-right">
+                          <p className="font-medium text-slate-800">{med.date}</p>
+                          <p className="text-sm text-slate-500">{med.doctor}</p>
                         </div>
                       </td>
                       {activeOptionalColumns.map((column) => (
@@ -771,23 +766,37 @@ export function MedicationTable() {
 
                   return [
                     baseRow,
-                    <tr key={`${med.id}-details`} className="border-t border-slate-100 bg-slate-50">
-                      <td />
-                      <td colSpan={4 + activeOptionalColumns.length} className="py-4">
-                        <div className="grid gap-6 rounded-2xl border border-slate-200 bg-white p-6 md:grid-cols-3">
-                          <div>
-                            <p className="text-xs uppercase text-slate-400">Full name</p>
-                            <p className="mt-2 font-medium text-slate-900">
-                              {med.patient?.fullName}
-                            </p>
+                    <tr key={`${med.id}-details`} className="border-t border-slate-100 bg-[#F7F7FB]">
+                      <td className="pl-6" />
+                      <td colSpan={4 + activeOptionalColumns.length} className="px-6 py-5">
+                        <div className="grid gap-8 text-sm text-slate-700 md:grid-cols-3">
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-xs uppercase text-slate-400">Full name</p>
+                              <p className="mt-1 font-medium text-slate-900">
+                                {med.patient?.fullName}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase text-slate-400">Contact</p>
+                              <p className="mt-1 font-medium text-slate-900">
+                                {med.contact}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs uppercase text-slate-400">
-                              Prescribed by
-                            </p>
-                            <p className="mt-2 font-medium text-slate-900">
-                              {med.doctor}
-                            </p>
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-xs uppercase text-slate-400">Prescribed by</p>
+                              <p className="mt-1 font-medium text-slate-900">
+                                {med.doctor}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase text-slate-400">
+                                Additional instructions
+                              </p>
+                              <p className="mt-1 text-slate-700">{med.instructions}</p>
+                            </div>
                           </div>
                           <div>
                             <p className="text-xs uppercase text-slate-400">Patient tags</p>

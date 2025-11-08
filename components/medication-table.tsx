@@ -395,9 +395,9 @@ export function MedicationTable() {
       <section className="w-full rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 px-6 pb-4 pt-5 md:flex-row md:items-center md:justify-between">
           <label
-            className={`flex flex-1 items-center gap-3 rounded-2xl border bg-slate-50 px-4 py-2 text-sm text-slate-500 focus-within:border-indigo-400 ${
-              searchInput ? "border-indigo-500" : "border-slate-200"
-            }`}
+            className={`flex flex-1 max-w-lg items-center gap-3 rounded-2xl border px-4 py-2 text-sm text-slate-500 transition ${
+              searchInput ? "border-indigo-500 bg-white" : "border-slate-200 bg-slate-50"
+            } focus-within:border-indigo-400`}
           >
             <Icon name="search" alt="Search" />
             <input

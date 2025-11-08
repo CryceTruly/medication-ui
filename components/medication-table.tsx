@@ -375,7 +375,8 @@ export function MedicationTable() {
     );
   };
 
-  const allSelected = selectedIds.length === medications.length;
+  const allSelected =
+    medications.length > 0 && selectedIds.length === medications.length;
   const indeterminate =
     selectedIds.length > 0 && selectedIds.length < medications.length;
   const selectionCount = selectedIds.length;
@@ -393,7 +394,11 @@ export function MedicationTable() {
     <>
       <section className="w-full rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-200 px-6 pb-4 pt-5 md:flex-row md:items-center md:justify-between">
-          <label className="flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-500 focus-within:border-slate-400">
+          <label
+            className={`flex flex-1 max-w-lg items-center gap-3 rounded-2xl border px-4 py-2 text-sm text-slate-500 transition ${
+              searchInput ? "border-indigo-500 bg-white" : "border-slate-200 bg-slate-50"
+            } focus-within:border-indigo-400`}
+          >
             <Icon name="search" alt="Search" />
             <input
               value={searchInput}
@@ -401,16 +406,18 @@ export function MedicationTable() {
               placeholder="Search medication orders"
               className="w-full bg-transparent text-slate-900 outline-none placeholder:text-slate-400"
             />
-            {searchInput && (
-              <button
-                type="button"
-                onClick={() => setSearchInput("")}
-                className="rounded-full p-1 text-slate-400 transition hover:bg-slate-200"
-                aria-label="Clear search text"
-              >
-                ✕
-              </button>
-            )}
+            <div className="flex h-6 w-6 items-center justify-center">
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput("")}
+                  className="rounded-full p-1 text-slate-400 transition hover:bg-slate-200"
+                  aria-label="Clear search text"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </label>
           <div className="flex items-center gap-2">
             <button className="flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700">

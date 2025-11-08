@@ -124,7 +124,10 @@ type IconName =
   | "edit"
   | "export"
   | "archive"
-  | "chevron-right-small";
+  | "chevron-right-small"
+  | "pencil-blue"
+  | "drag-blue"
+  | "drag-gray";
 
 type ColumnId = "contact" | "patientTags" | "notes";
 
@@ -254,6 +257,7 @@ export function MedicationTable() {
     DEFAULT_VISIBLE_OPTIONAL_COLUMNS,
   );
   const [showColumnConfigurator, setShowColumnConfigurator] = useState(false);
+  const [saveForTeam, setSaveForTeam] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 2000);
@@ -416,11 +420,6 @@ export function MedicationTable() {
     const currentValue =
       isEditing && isSelected && source ? source[field] : value;
 
-    if (!isEditing || !isSelected) {
-      const Element = multiline ? "div" : "p";
-      return <Element className={textClass}>{value}</Element>;
-    }
-
     if (isFieldEditing) {
       if (multiline) {
         return (
@@ -449,17 +448,23 @@ export function MedicationTable() {
       );
     }
 
+    if (!isEditing || !isSelected) {
+      const Element = multiline ? "div" : "p";
+      return <Element className={textClass}>{value}</Element>;
+    }
+
     const Wrapper = multiline ? "div" : "p";
 
     return (
-      <Wrapper className={`group flex items-center gap-1 ${textClass}`}>
+      <Wrapper className={`flex items-center gap-1 ${textClass}`}>
         <span className="flex-1 whitespace-pre-line">{currentValue}</span>
         <button
           type="button"
           onClick={() => startCellEdit(id, field)}
-          className="rounded-full p-1 text-indigo-500 opacity-0 transition hover:bg-indigo-50 group-hover:opacity-100"
+          className="rounded-full p-1 text-indigo-500 transition hover:bg-indigo-50"
+          aria-label={`Edit ${field}`}
         >
-          <Icon name="edit" className="h-3.5 w-3.5" />
+          <Icon name="pencil-blue" className="h-3.5 w-3.5" />
         </button>
       </Wrapper>
     );
@@ -552,7 +557,7 @@ export function MedicationTable() {
         <div className="ml-auto h-4 w-24 rounded bg-slate-100" />
         <div className="ml-auto mt-2 h-3 w-20 rounded bg-slate-100" />
       </td>
-      {visibleOptionalColumns.map((column) => (
+      {activeOptionalColumns.map((column) => (
         <td key={`skeleton-${column}`} className="px-4 py-4">
           <div className="h-3 w-full rounded bg-slate-100" />
         </td>
@@ -566,14 +571,6 @@ export function MedicationTable() {
   const hiddenOptionalColumns = optionalColumnOrder.filter(
     (column) => !visibleOptionalColumns.includes(column),
   );
-
-  const primaryColumnLabels = [
-    "Selection",
-    "Medication",
-    "Frequency",
-    "Additional instructions",
-    "Date",
-  ];
 
   return (
     <>
@@ -678,7 +675,7 @@ export function MedicationTable() {
               <th className="px-4 py-3">Frequency</th>
               <th className="px-4 py-3">Additional instructions</th>
               <th className="px-4 py-3 text-right pr-10">Date</th>
-              {visibleOptionalColumns.map((column) => (
+              {activeOptionalColumns.map((column) => (
                 <th key={`header-${column}`} className="px-4 py-3 text-left">
                   {optionalColumnConfig[column].label}
                 </th>
@@ -762,7 +759,7 @@ export function MedicationTable() {
                           </button>
                         </div>
                       </td>
-                      {visibleOptionalColumns.map((column) => (
+                      {activeOptionalColumns.map((column) => (
                         <td key={`${med.id}-${column}`} className="px-4 py-3 align-top">
                           {optionalColumnConfig[column].renderCell(med)}
                         </td>
@@ -776,7 +773,7 @@ export function MedicationTable() {
                     baseRow,
                     <tr key={`${med.id}-details`} className="border-t border-slate-100 bg-slate-50">
                       <td />
-                      <td colSpan={4 + visibleOptionalColumns.length} className="py-4">
+                      <td colSpan={4 + activeOptionalColumns.length} className="py-4">
                         <div className="grid gap-6 rounded-2xl border border-slate-200 bg-white p-6 md:grid-cols-3">
                           <div>
                             <p className="text-xs uppercase text-slate-400">Full name</p>
@@ -842,133 +839,147 @@ export function MedicationTable() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="column-config-title"
-            className="w-full max-w-4xl rounded-3xl bg-white shadow-2xl"
+            className="w-full max-w-3xl rounded-[32px] bg-white shadow-[0_25px_40px_rgba(15,23,42,0.12)]"
           >
-            <div className="flex items-start justify-between border-b border-slate-100 px-6 py-5">
+            <div className="flex items-start justify-between border-b border-slate-100 px-8 py-6">
               <div>
                 <h2
                   id="column-config-title"
-                  className="text-xl font-semibold text-slate-900"
+                  className="text-2xl font-semibold text-slate-900"
                 >
                   Configure table columns
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Toggle optional insights to customize this table. Changes apply
-                  immediately.
+                  Choose which optional fields appear in this table. Changes take effect immediately.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowColumnConfigurator(false)}
-                className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100"
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100"
                 aria-label="Close column configurator"
               >
-                x
+                ✕
               </button>
             </div>
-            <div className="grid gap-6 border-b border-slate-100 px-6 py-6 md:grid-cols-2">
-              <section>
-                <h3 className="text-sm font-semibold text-slate-700">
-                  Always visible
-                </h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Core columns cannot be hidden.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {primaryColumnLabels.map((label) => (
+            <div className="px-8 py-6">
+              <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+                <section className="flex-1">
+                  <p className="text-sm font-semibold text-slate-700">Available columns</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Optional insights you can add to the table.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-3">
+                    {hiddenOptionalColumns.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-slate-200 px-3 py-2 text-center text-xs text-slate-400">
+                        All optional columns are visible
+                      </div>
+                    )}
+                    {hiddenOptionalColumns.map((column) => (
+                      <button
+                        key={`available-${column}`}
+                        type="button"
+                        onClick={() => handleToggleColumnVisibility(column)}
+                        className="flex items-center justify-between rounded-2xl bg-indigo-50 px-4 py-2 text-left text-sm font-medium text-indigo-800 shadow-sm transition hover:bg-indigo-100"
+                      >
+                        <span className="flex items-center gap-3">
+                          <Icon name="drag-blue" />
+                          {optionalColumnConfig[column].label}
+                        </span>
+                        <span className="text-indigo-500" aria-hidden>
+                          ✕
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <div className="hidden h-full w-px bg-slate-200 md:block" />
+                <section className="flex-1">
+                  <p className="text-sm font-semibold text-slate-700">
+                    Visible columns <span className="text-xs font-normal text-slate-400">(Drag to reorder)</span>
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Primary fields stay pinned at the top.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-500">
+                      <span className="flex items-center gap-3">
+                        <Icon name="drag-gray" />
+                        Medication (locked)
+                      </span>
+                      <span className="text-slate-400">Pinned</span>
+                    </div>
+                    {activeOptionalColumns.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-slate-200 px-3 py-2 text-center text-xs text-slate-400">
+                        No optional columns are visible
+                      </div>
+                    )}
+                    {activeOptionalColumns.map((column) => (
+                      <div
+                        key={`visible-${column}`}
+                        className="flex items-center justify-between rounded-2xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-800 shadow-sm"
+                      >
+                        <span className="flex items-center gap-3">
+                          <Icon name="drag-blue" />
+                          {optionalColumnConfig[column].label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleColumnVisibility(column)}
+                          className="text-indigo-500 transition hover:text-indigo-700"
+                          aria-label={`Hide ${optionalColumnConfig[column].label}`}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            </div>
+            <div className="border-t border-slate-100 px-8 py-5">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                  <span className="text-sm font-medium text-slate-700">
+                    Save as default for all team members
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSaveForTeam((prev) => !prev)}
+                    role="switch"
+                    aria-checked={saveForTeam}
+                    className={`h-6 w-11 rounded-full border transition ${saveForTeam ? "border-transparent bg-indigo-500" : "border-slate-300 bg-slate-200"}`}
+                  >
                     <span
-                      key={label}
-                      className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500"
+                      className={`block h-5 w-5 rounded-full bg-white shadow transition ${saveForTeam ? "translate-x-5" : "translate-x-0.5"}`}
+                    />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <button
+                    type="button"
+                    onClick={handleResetColumns}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Reset to defaults
+                  </button>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowColumnConfigurator(false)}
+                      className="rounded-xl border border-slate-200 bg-white px-6 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                     >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              </section>
-              <section>
-                <h3 className="text-sm font-semibold text-slate-700">
-                  Optional columns
-                </h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Click to show or hide extra patient context.
-                </p>
-                <div className="mt-3 flex flex-col gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-400">
-                      Visible
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {activeOptionalColumns.length === 0 && (
-                        <span className="rounded-2xl border border-dashed border-slate-200 px-3 py-1 text-xs text-slate-400">
-                          No optional columns visible
-                        </span>
-                      )}
-                      {activeOptionalColumns.map((column) => (
-                        <button
-                          key={`visible-${column}`}
-                          type="button"
-                          onClick={() => handleToggleColumnVisibility(column)}
-                          className="flex items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100"
-                        >
-                          :: {optionalColumnConfig[column].label}
-                          <span aria-hidden className="text-sm">
-                            x
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-400">
-                      Hidden
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {hiddenOptionalColumns.length === 0 && (
-                        <span className="rounded-2xl border border-dashed border-slate-200 px-3 py-1 text-xs text-slate-400">
-                          No hidden columns
-                        </span>
-                      )}
-                      {hiddenOptionalColumns.map((column) => (
-                        <button
-                          key={`hidden-${column}`}
-                          type="button"
-                          onClick={() => handleToggleColumnVisibility(column)}
-                          className="flex items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:border-indigo-200 hover:text-indigo-700"
-                        >
-                          :: {optionalColumnConfig[column].label}
-                          <span className="text-xs text-slate-400">
-                            (add)
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowColumnConfigurator(false)}
+                      className="rounded-xl bg-indigo-600 px-6 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                    >
+                      Save
+                    </button>
                   </div>
                 </div>
-              </section>
-            </div>
-            <div className="flex flex-col gap-4 px-6 py-5">
-              <button
-                type="button"
-                onClick={handleResetColumns}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-              >
-                Reset to defaults
-              </button>
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowColumnConfigurator(false)}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowColumnConfigurator(false)}
-                  className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
-                >
-                  Save
-                </button>
               </div>
             </div>
           </div>
